@@ -16,13 +16,13 @@ ROMSdata <- filter(ROMSdata, `Chronic Pain (Yes/No)` != "1")
 
 ## fixing typos
 
-data1$`Body Region`[data1$`Body Region` == 'knee'] <- 'Knee'
-data1$`Body Region`[data1$`Body Region` == 'lumbar'] <- 'Lumbar'
+ROMSdata$`Body Region`[ROMSdata$`Body Region` == 'knee'] <- 'Knee'
+ROMSdata$`Body Region`[ROMSdata$`Body Region` == 'lumbar'] <- 'Lumbar'
 
 ## there is one ROMSID value that is six digit at 100000, while all other are four digit, removing for now
 ## (was told by PT team this would have been an error)
 
-data1 <- filter(data1, `ROMS ID` < 10000)
+ROMSdata <- filter(ROMSdata, `ROMS ID` < 10000)
 
 ## Fiona and Vic, feel free to add to this so we have all data cleaning consistent all together in one file. 
 
