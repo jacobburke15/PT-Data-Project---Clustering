@@ -24,5 +24,15 @@ ROMSdata$`Body Region`[ROMSdata$`Body Region` == 'lumbar'] <- 'Lumbar'
 
 ROMSdata <- filter(ROMSdata, `ROMS ID` < 10000)
 
-## Fiona and Vic, feel free to add to this so we have all data cleaning consistent all together in one file. 
+## removing "Non-Specific" for Surgery
+
+ROMSdata <- filter(ROMSdata, Surgical != "Non-Specific")
+
+## removing unkown chronic pain for now 
+
+ROMSdata <- filter(ROMSdata, `Chronic Pain (Yes/No)` != "Unknown")
+
+
+
+
 
