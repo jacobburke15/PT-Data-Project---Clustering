@@ -85,10 +85,7 @@ data1 <- ROMSdata %>% group_by(`ROMS ID`, `Body Region`, `Surgical`,
 
 dim(data1)
 
-## surgical 
-
-data1$`Body Region`[data1$`Body Region` == 'knee'] <- 'Knee'
-data1$`Body Region`[data1$`Body Region` == 'lumbar'] <- 'Lumbar'
+## surgical
 
 ggplot(data1) +
  aes(x = `Body Region`, fill = Surgical) +
