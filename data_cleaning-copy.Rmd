@@ -1,0 +1,193 @@
+---
+title: "PT_project0404"
+author: "Fiona"
+date: "4/5/2020"
+output:
+  html_document:
+    df_print: paged
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(readxl)
+library(ggplot2)
+library(dplyr)
+library(lubridate)
+library(zoo)
+library(scales)
+library(tidyverse)
+library(janitor)
+```
+
+```{r}
+dat1 <-  read_excel("~/Desktop/For Masanao Class - ROMS Full Data Set - March 19th, 2019 Upload.xlsx",sheet = 1)
+dat2 <-  read_excel("~/Desktop/For Masanao Class - ROMS Full Data Set - March 19th, 2019 Upload.xlsx",sheet = 2)
+
+```
+
+```{r}
+# delete the weird ID 
+dat2<- dat2 %>% filter(`ROMS ID` != 1000330)
+
+
+# fix inconsistent admission date and discharge date.
+# (it may merge some patients with relapse issues.)
+dat2$`Visit Date` <- as.character(dat2$`Visit Date`)
+dat2$`Admission Date`<- as.character(dat2$`Admission Date`)
+dat2$`Discharge Date` <-as.character(dat2$`Discharge Date`)
+# 1) fix the admission date
+# for the (same discharge date + same patient ID + same classification + same body region + same outcome type)
+dat2 <-dat2 %>% group_by(`ROMS ID`,Outcome,`Body Region`,Classification, `Discharge Date`) %>% mutate(`Admission Date` = ifelse(length(unique(`Admission Date`)) >=2, min(`Admission Date`),`Admission Date`))
+# 2) fix the discharge date
+# for the (same admission date + same patient ID + same classification + same body region + same outcome type)
+dat2 <-dat2 %>% group_by(`ROMS ID`,Outcome,`Body Region`,Classification, `Admission Date`) %>% mutate(`Discharge Date` = ifelse(length(unique(`Discharge Date`)) >=2, max(`Discharge Date`),`Discharge Date`))
+```
+```{r}
+# fix the age
+dat2$Age <- floor(dat2$Age) 
+
+# fix the typo for outcomes
+dat2$Outcome[dat2$Outcome =="Neck DISABILITY INDEX" ] <-  "NECK DISABILITY INDEX"
+dat2$Outcome[dat2$Outcome =="neck DISABILITY INDEX" ] <-  "NECK DISABILITY INDEX"
+
+# fix the typo for `chronic pain`
+dat2$`Chronic Pain (Yes/No)`[dat2$`Chronic Pain (Yes/No)` =="yes"] <- "Yes"
+dat2$`Chronic Pain (Yes/No)`[dat2$`Chronic Pain (Yes/No)` =="no"] <- "No"
+dat2$`Chronic Pain (Yes/No)`[dat2$`Chronic Pain (Yes/No)` ==1] <- "Unknown"
+
+# fix the typo for body regions
+dat2$`Body Region`[dat2$`Body Region` == "knee"] <- "Knee"
+dat2$`Body Region`[dat2$`Body Region` == "lumbar"] <- "Lumbar"
+
+# remove the duplicated rows and select some columns.
+#dat2 <- dat2 %>% distinct() 
+
+require(janitor)
+dat2$`Injury Date` <- as.numeric(as.character(dat2$`Injury Date`))
+dat2$`Injury Date` <- janitor::excel_numeric_to_date(dat2$`Injury Date`, date_system = "modern")
+dat2$`Surgery Date` <- as.numeric(as.character(dat2$`Surgery Date`))
+dat2$`Surgery Date` <- janitor::excel_numeric_to_date(dat2$`Surgery Date`, date_system = "modern")
+```
+
+```{r}
+#### fix the inconsistency of beg and final score
+# 1) after grouping, if for one therapy the admission pain score is not consistent, use the first visit pain score.
+dat2 <- dat2 %>%group_by(`ROMS ID`,Outcome,`Body Region`, Classification,`Admission Date`,`Discharge Date`) %>% mutate(`Admission Pain` = ifelse( length(unique(`Admission Pain`))>=2, (first(`Visit Pain Score`) ), `Admission Pain` ))
+# 2) after grouping, if for one therapy the admission outcome score is not consistent, use the first visit outcome score.
+dat2<- dat2 %>%group_by(`ROMS ID`,Outcome,`Body Region`,  Classification,`Admission Date`,`Discharge Date`) %>% mutate(`Admission Outcome Score` = ifelse( length(unique(`Admission Outcome Score`))>=2, (first(`Visit Outcome Score`) ), `Admission Outcome Score` ))
+# 3) after grouping, if for one therapy the discharge pain score is not consistent, use the last visit pain score.
+dat2<- dat2 %>%group_by(`ROMS ID`,Outcome, `Body Region`, Classification,`Admission Date`,`Discharge Date`) %>% mutate(`Discharge Pain Score`= ifelse( length(unique(`Discharge Pain Score`))>=2, (last(`Visit Pain Score`) ), `Discharge Pain Score` ))
+# 4) after grouping, if for one therapy the discharge outcome score is not consistent, use the last visit discharge outcome score.
+dat2<- dat2 %>%group_by(`ROMS ID`,Outcome, `Body Region`, Classification,`Admission Date`,`Discharge Date`) %>% mutate(`Discharge Outcome Score`= ifelse( length(unique(`Discharge Outcome Score`))>=2, (last(`Visit Outcome Score`) ), `Discharge Outcome Score` ))
+
+# fix the injury date, take the earliest.
+# 1) in general
+dat2$`Injury Date`<- as.character(dat2$`Injury Date`)
+dat2 <- dat2 %>%group_by(`ROMS ID`,Outcome,`Body Region`, Classification,`Admission Date`,`Discharge Date`) %>% mutate(`Injury Date` = ifelse( length(unique(`Injury Date`))>=2, (min(`Injury Date`) ), `Injury Date` ))
+# 2) fix ID 882's injury date
+dat2 <- dat2 %>%group_by(`ROMS ID`,`Body Region`, Classification,`Admission Date`,`Discharge Date`)%>% 
+ mutate(`Injury Date` = ifelse( length(unique(`Injury Date`))>=2, (min(`Injury Date`) ), `Injury Date` ))
+
+```
+
+```{r}
+# evaluate the clinical function for the pain level. if the pain in the last decreases at least 2 or from less than 2 to 0, we say it's good therapy, otherwise, bad therapy.
+da_evaluate <- dat2  %>% mutate(pain_effect = ifelse((`Discharge Pain Score`-`Admission Pain`) <= -2 & `Admission Pain` >= 2, "good",ifelse(`Admission Pain` < 2 &`Discharge Pain Score`==0, "good","bad" )))
+
+# evaluate the treatment effectiveness overall.
+# 1)  1. for the outcome type =LOWER EXTREMITY FUNC SCALE, it's good discharge outcome score if `improve >= 9` or from >71 to max80.
+#     2. if either the admission or outcome discharge score greater than 80 (the standard scale for this type), remove.
+da_evaluate1<- da_evaluate %>%  filter(Outcome == "LOWER EXTREMITY FUNC SCALE") %>% mutate(effect_all = ifelse(`Admission Outcome Score`<71 & (`Discharge Outcome Score`-`Admission Outcome Score`) >= 9, "good", ifelse(`Admission Outcome Score`>=71 & `Discharge Outcome Score`==80, "good", "bad"))) #%>% filter(`Admission Outcome Score`<=80 & da$`Discharge Outcome Score` <=80)
+da_evaluate1 <- da_evaluate1 %>% filter(`Admission Outcome Score`<=80) %>% filter(`Discharge Outcome Score` <=80) 
+
+# 2) deal with the outcome type =KNEE OUTCOME SURVEY, good if improve >= 9 or improve from >91 to 100, otherwise, bad.
+da_evaluate2<- da_evaluate %>%  filter(Outcome == "KNEE OUTCOME SURVEY") %>% mutate(effect_all = ifelse(`Admission Outcome Score`<91 & (`Discharge Outcome Score`-`Admission Outcome Score`) >= 9, "good", ifelse(`Admission Outcome Score`>=91 & `Discharge Outcome Score`==100, "good", "bad"))) 
+da_evaluate2 <- da_evaluate2 %>% filter(`Admission Outcome Score`<= 100) %>% filter(`Discharge Outcome Score` <=100) 
+
+# 3)check the outcome type in "MODIFIED LOW BACK DISABILITY QUESTIONNAIRE","Quick DASH","NECK DISABILITY INDEX"
+# (good if decreases more than 10, or decreases from less than 10 to 0, otherwise, bad.)
+da_evaluate3 <- da_evaluate %>%  filter(Outcome %in% c("MODIFIED LOW BACK DISABILITY QUESTIONNAIRE","Quick DASH","NECK DISABILITY INDEX")) %>% mutate(effect_all = ifelse(`Admission Outcome Score`>10 & (`Discharge Outcome Score`-`Admission Outcome Score`) <= -10, "good", ifelse(`Admission Outcome Score` <=10 & `Discharge Outcome Score`==0, "good", "bad"))) 
+da_evaluate3 <- da_evaluate3 %>% filter(`Admission Outcome Score`<= 100) %>% filter(`Discharge Outcome Score` <=100) 
+
+# combine date
+da_eval <- rbind(da_evaluate1,da_evaluate2,da_evaluate3)
+
+# delete the distinct
+da_eval  <- da_eval %>% distinct() 
+
+```
+
+```{r}
+# we consider some features
+subset <- da_eval[,c(2,5,6,7,8,15,16,17,18,20,21,22,25,26,27,28,29,30,31,32,33,37,38)]
+# 4263 therapy?
+subset.1 <- subset %>% group_by(`ROMS ID`,Outcome,`Body Region`,Classification, `Admission Date`,`Admission Outcome Score`,`Admission Pain`,`Discharge Date`,`Discharge Outcome Score`,`Discharge Pain Score`, pain_effect, effect_all) %>%  mutate(visit = n(), duration = ymd(`Discharge Date`)-ymd(`Admission Date`),age = Age, Gender = `Sex (1=male, 2=female)`,`Injury Date`,Surgical,`Chronic Pain (Yes/No)`,`Payer Category`)
+
+# detected some conflict within age again.
+# fix the age typo
+subset.1$Age <- ifelse(subset.1$`ROMS ID` ==2435, 64, subset.1$Age)
+subset.1$Age <- ifelse(subset.1$`ROMS ID` ==3539, NA, subset.1$Age)
+subset.1$Age <- ifelse(subset.1$`ROMS ID` ==3957, 33, subset.1$Age)
+
+# fix the conflict in chronic pain (by using unknown)
+subset.1$`Chronic Pain (Yes/No)` <- ifelse(subset.1$`ROMS ID` %in% c(2435,2920,1418,2739), "Unknown", subset.1$`Chronic Pain (Yes/No)`)
+subset.1$`Chronic Pain (Yes/No)` <- as.factor(subset.1$`Chronic Pain (Yes/No)`)
+
+# gather features together in new dataframe
+df <- subset.1 %>% select(`ROMS ID`,Age, Gender, Outcome,`Body Region`,Classification, `Admission Date`,`Admission Outcome Score`,`Admission Pain`,`Discharge Date`,`Discharge Outcome Score`,`Discharge Pain Score`, pain_effect, effect_all,visit, duration,`Injury Date`,Surgical,`Chronic Pain (Yes/No)`,`Payer Category`)
+
+##ck <- df %>% group_by(`ROMS ID`,Age, Gender, Outcome,`Body Region`,Classification)%>% filter(n_distinct(`Payer Category`)>1)
+
+df <- df %>% distinct()
+
+# give score 
+df <- df %>% mutate(painresult = ifelse(pain_effect =="good" , 1, 0)) %>% mutate(result = ifelse(effect_all =="good" , 1, 0))
+
+#  2896 ID correspond to only 1 therapy (same period of time, same outcome type, same region, same classification)
+subset.1 <- df %>% group_by(`ROMS ID`) %>% filter(n()==1)
+
+# repeated situation - 1276 records correspond to multiple records, maybe different outcome, or different other criteria.
+subset.2 <- df %>% group_by(`ROMS ID`) %>% filter(n()>1)
+subset.2$painresult <- as.numeric(subset.2$painresult)
+subset.2$result <- as.numeric(subset.2$result)
+```
+
+```{r}
+# for the ID with repeated therapy summaries, check if the cause was outcome type
+check <- subset.2 %>% group_by(`ROMS ID`,`Body Region`,Classification, `Admission Date`,`Discharge Date` )%>% mutate(rep = n_distinct(Outcome))
+# 1) if the only cause is outcome type, we evaluate the therapy on average. 
+check.1 <-check %>% filter(rep >=2 ) %>% mutate(painresult = ave(painresult),  result = ave(result),visit = ave(visit), duration = ave(duration))
+check.1 <- check.1[, -c(23)]
+#ck1<- check.1 %>% group_by(`ROMS ID`,Age, Gender, `Body Region`,Classification) %>% filter(n_distinct(`Injury Date`)>1)
+# also when we evaluate them by their average, some information becomes not valid logically.
+check.1[,c(4,8,9, 11,12,13,14)] <- NULL
+check.1 <- distinct(check.1)
+
+# 2) if the cause is not outcome type, the repeated therapy summary can imply that 2 therapy exist, whether the same time period or not. we shall keep those lines.
+check.2 <- check %>% filter(rep ==1 ) %>% mutate(pain = ave(painresult),  effectiveness = ave(result),visit = ave(visit), duration = ave(duration))
+check.2 <- check.2[, -c(23,24,25)]
+```
+
+
+```{r}
+# combine the result, 3105 therapy in total
+df_unique <- rbind(subset.1, check.2)
+# combine the result including the repeated summaries of therapy, 3652 therapy in total
+df_all <- dplyr::bind_rows(df_unique, check.1)
+
+# remove the suspecious discharge date for id 2131, which discharge date is in June,2020
+df_unique <- df_unique %>% filter(`ROMS ID` != 2131)
+df_all <-df_all %>% filter(`ROMS ID` != 2131)
+```
+
+```{r}
+length(df_unique$`ROMS ID`)
+
+length(df_all$`ROMS ID`)
+```
+```{r}
+write.csv(df_unique, "dat2.csv")
+write.csv(df_all, "dat2_all.csv")
+```
+
+
+
