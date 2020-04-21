@@ -84,7 +84,6 @@ x_test <- mnist$test$x/255
 x_train <- array_reshape(x_train, c(nrow(x_train), 784), order = "F")
 x_test <- array_reshape(x_test, c(nrow(x_test), 784), order = "F")
 
-
 # Model training ----------------------------------------------------------
 
 ## this is the end to end autoencoder 
