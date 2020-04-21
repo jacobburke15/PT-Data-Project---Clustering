@@ -114,11 +114,12 @@ elbow <-data.frame(2:max_k, wss)
 ggplot(elbow, aes(x = X2.max_k, y = wss)) +
   geom_point() +
   geom_line() +
+  labs(x = "K Cluster Number", y = "WSS") +
   scale_x_continuous(breaks = seq(1, 20, by = 1))
 
 ## just about after 6 clusters, the drop is fairly low dropping, so let's set to 11 for now 
 
-opt_clusters <- kmeans(rescale_df, 2)
+opt_clusters <- kmeans(rescale_df, 14)
 
 
 ## visualizing attempt

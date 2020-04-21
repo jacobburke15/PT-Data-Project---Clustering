@@ -1,0 +1,185 @@
+---
+title: "Autoencoder - PT Data"
+author: "Jacob Burke"
+date: "20/04/2020"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(readxl)
+library(ggplot2)
+library(dplyr)
+library(lubridate)
+library(zoo)
+library(scales)
+library(tidyverse)
+library(janitor)
+
+```
+
+# Autoencoder using the PT Data 
+
+Loading the keras package and back-end tensor flow. 
+
+```{r, include = F}
+
+library(keras)
+
+K <- keras::backend()
+
+```
+
+Reading in Fiona's clean data "dat2_all.csv".
+
+```{r}
+data <- read.csv("dat2_all.csv")
+```
+
+Setting the autoencoder parameters, our start dimensions are 23, intermediate of 8, and we want to get to 2.Trying with a batch size of 25, and 10 epochs. 
+
+```{r}
+
+## batch size = 50, epochs = 20
+
+batch_size <- 50L
+original_dim <- 23L
+latent_dim <- 2L
+intermediate_dim <- 8L
+epochs <- 20L
+epsilon_std <- 1.0
+
+```
+
+Defining the model. 
+
+```{r}
+
+x <- layer_input(shape = c(original_dim))
+h <- layer_dense(x, intermediate_dim, activation = "softmax")
+z_mean <- layer_dense(h, latent_dim)
+z_log_var <- layer_dense(h, latent_dim)
+
+sampling <- function(arg){
+  z_mean <- arg[, 1:(latent_dim)]
+  z_log_var <- arg[, (latent_dim + 1):(2 * latent_dim)]
+  
+  epsilon <- k_random_normal(
+    shape = c(k_shape(z_mean)[[1]]), 
+    mean=0.,
+    stddev=epsilon_std
+  )
+  
+  z_mean + k_exp(z_log_var/2)*epsilon
+}
+
+## z here is the latent data condensed from the x data 
+
+z <- layer_concatenate(list(z_mean, z_log_var)) %>% 
+  layer_lambda(sampling)
+
+# we instantiate these layers separately so as to reuse them later 
+
+## ***(may not need this decoder section once encoded for our PT data)***
+
+decoder_h <- layer_dense(units = intermediate_dim, activation = "relu")
+decoder_mean <- layer_dense(units = original_dim, activation = "sigmoid")
+h_decoded <- decoder_h(z)
+x_decoded_mean <- decoder_mean(h_decoded)
+
+# end-to-end autoencoder
+vae <- keras_model(x, x_decoded_mean)
+
+# encoder, from inputs to latent space
+
+encoder <- keras_model(x, z_mean)
+
+# generator, from latent space to reconstructed inputs (ie. decoder)
+decoder_input <- layer_input(shape = latent_dim)
+h_decoded_2 <- decoder_h(decoder_input)
+x_decoded_mean_2 <- decoder_mean(h_decoded_2)
+generator <- keras_model(decoder_input, x_decoded_mean_2)
+
+
+## loss function that is incorporated in Variational autoencoders 
+
+vae_loss <- function(x, x_decoded_mean){
+  xent_loss <- (original_dim/1.0)*loss_binary_crossentropy(x, x_decoded_mean)
+  kl_loss <- -0.5*k_mean(1 + z_log_var - k_square(z_mean) - k_exp(z_log_var), axis = -1L)
+  xent_loss + kl_loss
+}
+
+vae %>% compile(optimizer = "rmsprop", loss = vae_loss, experimental_run_tf_function = FALSE)
+
+```
+
+Preparing the data. 
+
+```{r}
+
+## need to split data into test and training 
+## removing NA's, (cannot have when building autoencoder)
+
+data <- na.omit(data)
+
+## 75% of the sample size
+smp_size <- floor(0.75 * nrow(data))
+
+## set the seed to make your partition reproducible
+set.seed(2020)
+
+train_ind <- sample(seq_len(nrow(data)), size = smp_size)
+
+
+
+x_train <- data[train_ind, ]
+x_test <- data[-train_ind, ]
+
+## getting them into matrix form to be able to be passed into the fit() function 
+
+x_train <- output <- matrix(unlist(x_train), ncol = 23, byrow = F)
+x_test <- output <- matrix(unlist(x_test), ncol = 23, byrow = F)
+
+```
+
+Training the model. 
+
+```{r}
+## this is the end to end autoencoder 
+
+vae %>% fit(
+  x_train, x_train, 
+  shuffle = TRUE, 
+  epochs = epochs, 
+  batch_size = batch_size,
+  validation_data = list(x_test, x_test), 
+)
+
+```
+
+Visualizing. 
+
+```{r}
+library(ggplot2)
+library(dplyr)
+
+x_test_encoded <- predict(encoder, x_test, batch_size = batch_size) ## passing in the encoder model with the test data
+
+## plotting the encoded 2-deminsions, we will need to do this with our data once encoded
+
+x_test_encoded %>%
+  as_data_frame() %>% 
+  ggplot(aes(x = V1, y = V2)) + geom_point()
+
+
+## seems to be working, but the clusters come out to only about two/three with the seperations, need 
+## to figute out how to determine what is seperating them??? And if this actually looks proper??
+
+```
+
+
+
+
+
+
+
