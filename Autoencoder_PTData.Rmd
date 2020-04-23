@@ -43,7 +43,7 @@ Setting the autoencoder parameters, our start dimensions are 23, intermediate of
 ## batch size = 50, epochs = 20
 
 batch_size <- 50L
-original_dim <- 23L
+original_dim <- 20L
 latent_dim <- 2L
 intermediate_dim <- 8L
 epochs <- 20L
@@ -56,7 +56,7 @@ Defining the model.
 ```{r}
 
 x <- layer_input(shape = c(original_dim))
-h <- layer_dense(x, intermediate_dim, activation = "softmax")
+h <- layer_dense(x, intermediate_dim, activation = "relu") ## not sure if this is the right activation
 z_mean <- layer_dense(h, latent_dim)
 z_log_var <- layer_dense(h, latent_dim)
 
@@ -122,6 +122,10 @@ Preparing the data.
 
 data <- na.omit(data)
 
+## removing the last two columns and the first index column
+
+data <- data[,-c(1, 22, 23)]
+
 ## 75% of the sample size
 smp_size <- floor(0.75 * nrow(data))
 
@@ -137,8 +141,8 @@ x_test <- data[-train_ind, ]
 
 ## getting them into matrix form to be able to be passed into the fit() function 
 
-x_train <- output <- matrix(unlist(x_train), ncol = 23, byrow = F)
-x_test <- output <- matrix(unlist(x_test), ncol = 23, byrow = F)
+x_train <- output <- matrix(unlist(x_train), ncol = 20, byrow = F)
+x_test <- output <- matrix(unlist(x_test), ncol = 20, byrow = F)
 
 ```
 
@@ -172,8 +176,67 @@ x_test_encoded %>%
   ggplot(aes(x = V1, y = V2)) + geom_point()
 
 
-## seems to be working, but the clusters come out to only about two/three with the seperations, need 
-## to figute out how to determine what is seperating them??? And if this actually looks proper??
+## looking better, getting there 
+
+
+
+```
+
+Clustering on the Encoded data. 
+```{r}
+
+############ clustering attempt
+
+set.seed(2020)
+
+x_test_encoded <- as_data_frame(x_test_encoded)
+
+clusters <- kmeans(x_test_encoded, 5)
+
+result <- mutate(x_test_encoded, cluster = as.factor(clusters$cluster))
+
+str(clusters)
+
+## elbow method to get optimal k clusters
+
+kmean_withinss <- function(k) {
+  cluster <- kmeans(result, k)
+  return (cluster$tot.withinss)
+}
+
+# Set maximum cluster 
+
+max_k <-20
+
+# Run algorithm over a range of k 
+
+wss <- sapply(2:max_k, kmean_withinss)
+
+# Create a data frame to plot the graph
+
+elbow <-data.frame(2:max_k, wss)
+
+# Plot the graph with gglop
+ggplot(elbow, aes(x = X2.max_k, y = wss)) +
+  geom_point() +
+  geom_line() +
+  labs(x = "K Cluster Number", y = "WSS") +
+  scale_x_continuous(breaks = seq(1, 20, by = 1))
+
+## just about after 6 clusters, the drop is fairly low dropping, so let's set to 11 for now 
+
+opt_clusters <- kmeans(x_test_encoded, 9)
+
+
+## visualizing attempt
+
+print(opt_clusters)
+str(opt_clusters)
+library(factoextra)
+
+
+fviz_cluster(opt_clusters, data = x_test_encoded)
+
 
 ```
 
