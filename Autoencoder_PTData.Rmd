@@ -15,6 +15,8 @@ library(zoo)
 library(scales)
 library(tidyverse)
 library(janitor)
+library(standardize)
+
 
 ```
 
@@ -34,9 +36,19 @@ Reading in Fiona's clean data "dat2_all.csv".
 
 ```{r}
 data <- read.csv("dat2_all.csv")
+
+## removing index and last two columns 
+
+data <- data[,-c(1, 22, 23)]
+
+## removing NA's 
+
+data <- na.omit(data)
+
+
 ```
 
-Setting the autoencoder parameters, our start dimensions are 23, intermediate of 8, and we want to get to 2.Trying with a batch size of 25, and 10 epochs. 
+Setting the autoencoder parameters. 
 
 ```{r}
 
@@ -45,7 +57,7 @@ Setting the autoencoder parameters, our start dimensions are 23, intermediate of
 batch_size <- 50L
 original_dim <- 20L
 latent_dim <- 2L
-intermediate_dim <- 8L
+intermediate_dim <- 12L
 epochs <- 20L
 epsilon_std <- 1.0
 
@@ -118,13 +130,6 @@ Preparing the data.
 ```{r}
 
 ## need to split data into test and training 
-## removing NA's, (cannot have when building autoencoder)
-
-data <- na.omit(data)
-
-## removing the last two columns and the first index column
-
-data <- data[,-c(1, 22, 23)]
 
 ## 75% of the sample size
 smp_size <- floor(0.75 * nrow(data))
@@ -141,8 +146,8 @@ x_test <- data[-train_ind, ]
 
 ## getting them into matrix form to be able to be passed into the fit() function 
 
-x_train <- output <- matrix(unlist(x_train), ncol = 20, byrow = F)
-x_test <- output <- matrix(unlist(x_test), ncol = 20, byrow = F)
+x_train <-  matrix(unlist(x_train), ncol = 20, byrow = F)
+x_test <- matrix(unlist(x_test), ncol = 20, byrow = F)
 
 ```
 
@@ -167,22 +172,23 @@ Visualizing.
 library(ggplot2)
 library(dplyr)
 
+
 x_test_encoded <- predict(encoder, x_test, batch_size = batch_size) ## passing in the encoder model with the test data
 
-## plotting the encoded 2-deminsions, we will need to do this with our data once encoded
+## plotting the encoded 2-deminsions
 
 x_test_encoded %>%
   as_data_frame() %>% 
   ggplot(aes(x = V1, y = V2)) + geom_point()
 
 
-## looking better, getting there 
 
 
 
 ```
 
 Clustering on the Encoded data. 
+
 ```{r}
 
 ############ clustering attempt
@@ -223,9 +229,9 @@ ggplot(elbow, aes(x = X2.max_k, y = wss)) +
   labs(x = "K Cluster Number", y = "WSS") +
   scale_x_continuous(breaks = seq(1, 20, by = 1))
 
-## just about after 6 clusters, the drop is fairly low dropping, so let's set to 11 for now 
+## just about after 6 clusters, the drop is fairly low dropping, so let's set to 8 for now 
 
-opt_clusters <- kmeans(x_test_encoded, 9)
+opt_clusters <- kmeans(x_test_encoded, 8)
 
 
 ## visualizing attempt
@@ -236,6 +242,23 @@ library(factoextra)
 
 
 fviz_cluster(opt_clusters, data = x_test_encoded)
+
+## saved the test data set 
+
+## write.csv(x_test, "x_test_relu.csv")
+
+## saving the corresponding encoded test data set 
+
+## write.csv(x_test_encoded, "x_test_encoded_relu.csv")
+
+
+## two sets of output were saved and exported to github, one with the "elu" activation
+## and the other with the "relu" activation 
+
+## elu (50 batch, 20 epoch, 12 intermediate layer)
+
+## relu (50 batch, 20 epoch, 12 intermediate layer)
+
 
 
 ```
