@@ -1,5 +1,5 @@
 ---
-title: "Clustering"
+title: "MA679 Final Project - PT Data Analysis"
 author: "Team 1"
 date: "5/5/2020"
 output:
@@ -19,11 +19,16 @@ library(tidyverse)
 library(janitor)
 ```
 
+# Introduction 
+
+(needs comments)
+
 # DATA CLEANING							
 
 Our data cleaning process is basically divided into 3 steps. Firstly, we looked into each column, detected and dealt with unusual values. Secondly, we determined the effectiveness of each therapeutic process based on the evaluation criteria of each outcome type. Specifically, we evaluated the effectiveness of pain reduction and the overall improvement. Then, we aggregated some therapy summaries which were logically duplicated, and reevaluated them by taking average. 
 
-### I
+### i)
+
 In the first step, we mainly worked on fixing typos, removing repeated rows, detected and fixed (or removed) problematic values. Typos are general problems caused by inconsistent upper/lower case spelling. And there are many special problems for each column, we analyzed and determined how to smooth the potential errors:
 
 (a) We deleted the record with discharge date in June 2020. 
@@ -40,7 +45,8 @@ In the first step, we mainly worked on fixing typos, removing repeated rows, det
 
 (g) We removed the outcome scores that were out of range. The maximum possible value for LOWER EXTREMITY FUNC SCALE is 80, we eliminated the records for those LOWER EXTREMITY FUNC SCALE values larger than 80 (applied to either admission scores or discharge scores).
 
-### II
+### ii)
+
 In the second step, we evaluated the effectiveness of pain reduction and the overall improvement of each treatment and gave binary scores to them.\newline
 
 (a) For pain result, if pain scores were reduced by at least 2 points, or reduced from less than 2 to 0, then pain reduction effectiveness was good, we assigned 1 to the result. Otherwise, we considered the therapy’s effectiveness of pain reduction was not good, and we assigned 0 to the result.
@@ -52,7 +58,7 @@ In the second step, we evaluated the effectiveness of pain reduction and the ove
     
     (3) When outcome belongs to other 3 types, if the score decreased at least 10 points or decreased from less than 10 to 0 (minimum), then we considered the treatment is effective overall, and we assigned the overall effect with score 1. Otherwise, we gave the overall effect with score 0.
 
-### III
+### iii)
 
 After those 2 steps, then we aggregated some therapy summaries and evaluated them by taking average.	
 For the treatments with identical same ID, body region, classification and treatment time, if the categories of outcome are different, we took the average of the pain reduction effectiveness scores (1 or 0) and took the average of the effect for overall improvement (1 or 0). Since we aggregated some rows, some columns became invalid logically, so they are assigned NA.
@@ -227,7 +233,9 @@ length(df_all$`ROMS ID`)
 data <- df_unique
 ```
 
+# EDA 
 
+(needs comments)
 ```{r}
 #da2$duration <- as.Date(da2$`Discharge Date`) - as.Date(da2$`Admission Date`)
 data$`Admission Pain` <- as.factor(data$`Admission Pain`)
@@ -241,6 +249,7 @@ ggplot(subset(data, `ROMS ID` != 2537 & 1893), aes(x=duration, color=`Admission 
     theme(plot.title = element_text(size =12))
 
 ```
+
 ```{r}
 ggplot(data, mapping = aes(x = `Admission Pain`, fill = `Body Region`)) +
     geom_bar(position="stack")+coord_flip() + labs(title = ("Admission Pain and the Distribution of Body Region"))
@@ -253,9 +262,17 @@ data$`Admission Pain` <- as.numeric(data$`Admission Pain`)
 data2 <- data %>% mutate (change = `Discharge Pain Score` - `Admission Pain`)
 data2$`Admission Pain`<-as.factor(data2$`Admission Pain`)
 
-ggplot(data2, aes(x = `Admission Pain`, y = change))+ geom_boxplot(col = "gray", alpha = 0.3,fill= "gray15")+geom_jitter(height = 0.15, width = 0.25, aes(colour = factor(effect_all)),,alpha = 0.7,size = 0.6)+labs(fill = ("Outcome Minimal Clinical Important Difference"), title=("Association between Pain changes and Whether reach outcome Minimal Clinical Important Difference"))+
+ggplot(data2, aes(x = `Admission Pain`, y = change))+ geom_boxplot(col = "gray", alpha = 0.3,fill= "gray15")+geom_jitter(height = 0.15, width = 0.25, aes(colour = factor(effect_all)),alpha = 0.7,size = 0.6)+labs(fill = ("Outcome Minimal Clinical Important Difference"), title=("Association between Pain changes and Whether reach outcome Minimal Clinical Important Difference"))+
     theme(plot.title = element_text(size =11))
 ```
 
+## (All EDA in the presentation should be added to the report here - any extras, add the appendix)
 
+
+# Autoencoder & K-means Clustering 
+
+
+# Discussion & Conclusion
+
+# Appendix
 
