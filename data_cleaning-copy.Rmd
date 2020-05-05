@@ -19,8 +19,8 @@ library(janitor)
 ```
 
 ```{r}
-dat1 <-  read_excel("~/Desktop/For Masanao Class - ROMS Full Data Set - March 19th, 2019 Upload.xlsx",sheet = 1)
-dat2 <-  read_excel("~/Desktop/For Masanao Class - ROMS Full Data Set - March 19th, 2019 Upload.xlsx",sheet = 2)
+dat1 <-  read_excel("For Masanao Class - ROMS Full Data Set - March 19th, 2019 Upload.xlsx",sheet = 1)
+dat2 <-  read_excel("For Masanao Class - ROMS Full Data Set - March 19th, 2019 Upload.xlsx",sheet = 2)
 
 ```
 

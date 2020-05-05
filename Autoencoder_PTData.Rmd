@@ -263,6 +263,68 @@ fviz_cluster(opt_clusters, data = x_test_encoded)
 
 ```
 
+Intepreting the output.
+
+```{r}
+
+df_encoded <- read.csv("x_test_encoded_relu.csv")
+
+df <- read.csv("x_test_relu.csv")
+
+df_encoded <- df_encoded[,2:3]
+
+df <- df[,2:21]
+
+## colouring by body region 
+
+library(ggplot2)
+
+ggplot(df_encoded) + 
+  geom_point(aes(x = V1, y = V2, color = df$Body.Region))
+
+## fairly mixed 
+
+## colouring by visit 
+
+ggplot(df_encoded) + 
+  geom_point(aes(x = V1, y = V2, color = df$visit))
+
+## fairly mixed 
+
+## colouring by gender 
+
+ggplot(df_encoded) + 
+  geom_point(aes(x = V1, y = V2, color = as.factor(df$Gender)))
+
+## again, mixed
+
+## colouring by admission pain 
+
+ggplot(df_encoded) + 
+  geom_point(aes(x = V1, y = V2, color = df$Admission.Pain))
+
+## mixed 
+
+## colouring by surgical
+
+ggplot(df_encoded) + 
+  geom_point(aes(x = V1, y = V2, color = df$Surgical))
+
+## no trend 
+
+## colouring by Chronic 
+
+ggplot(df_encoded) + 
+  geom_point(aes(x = V1, y = V2, color = df$Chronic.Pain..Yes.No.))
+
+## mixed 
+
+## doesn't seem to have a trend
+
+```
+
+
+
 
 
 
