@@ -1,0 +1,26 @@
+---
+title: "Conclusion Part"
+author: "Fiona Jiang"
+date: "5/6/2020"
+output: pdf_document
+---
+
+# Conclusion
+
+Once we had the data clustered, we needed to get creative to try and derive the representations of the new 2 dimensions for the encoded data, with respect to variables in the original PT data set. However, in our case the results of the k-means clustering didn’t seem to mirror any other dividing of the data, based on PT data variables including Body Region Injuries, Chronic Pain, Surgery, Gender, and so on.  
+
+The result of our clustering algorithm may seem unexpected, but it is possible. According to the EDA plot “Distributions of treatment duration given admission pain scores”, the probability density function curves of treatment duration show similar patterns with each other, which means that Admission Pain Score is not a factor of significant impact on the overall patient clustering. In addition to Admission Pain Score, the EDA plot “Patient Visit Numbers by Injury Body Region” indicates that the distributions of visit times corresponding to each body region are similar, which means that body region may not be an important factor for patient clustering. The EDA plot “Distribution of Body Region Injuries, Chronic vs. Not” agrees the opinion that body regions may not be an important factor for patient clustering. The chronic pain symptom doesn’t show specific focus on particular body regions. Instead, the chronic pain keeps proportional to the total counts of treatments.
+
+Therefore, concluding from our analysis, running our autoencoder did not decipher a clear way in which the PT patient groups divide themselves among clusters, when the dimensions are brought down to 2-Dimension. The output of the autoencoder is dependent on the data inputted, and no clear factors within the data that divide the current data.
+
+
+# Limitations and Discussion
+
+Except the unscaled variables in our data set, another potential data issue is that our data set contains both numeric information and text information. The text data needs to be prepared before building autoencoder, becasue Keras package is typically applied to numeric data, and so does K-means algorithm. One possible solution for handling text data in our case is to create dummy variables and let them represent different text data. However, K-means algorithm performs poorly on categorical data. The reason is that the cost function of K-means algorithm computes Euclidean distance or somethine similar between two numeric values. However, it is not possible to define such distance between categorical values.
+
+In order to optimize the clustering, we also need to confirm the applicability of activiting functions and tune hyperparameters in the future. A better set of hyperparameters and activiting functions may generate better clustering results.
+
+
+
+
+
