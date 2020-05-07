@@ -197,6 +197,14 @@ set.seed(2020)
 
 x_test_encoded <- as_data_frame(x_test_encoded)
 
+
+
+## adding saved encoded data 
+
+x_test_encoded <- read.csv("x_test_encoded_relu.csv")
+
+x_test_encoded <- x_test_encoded[,2:3]
+
 clusters <- kmeans(x_test_encoded, 5)
 
 result <- mutate(x_test_encoded, cluster = as.factor(clusters$cluster))
@@ -280,21 +288,22 @@ df <- df[,2:21]
 library(ggplot2)
 
 ggplot(df_encoded) + 
-  geom_point(aes(x = V1, y = V2, color = df$Body.Region))
+  geom_point(aes(x = V1, y = V2, color = df$Body.Region))+ ggtitle("Body Regions")
 
 ## fairly mixed 
 
 ## colouring by visit 
 
 ggplot(df_encoded) + 
-  geom_point(aes(x = V1, y = V2, color = df$visit))
+  geom_point(aes(x = V1, y = V2, color = df$visit)) + ggtitle("Visit Counts")
 
 ## fairly mixed 
 
 ## colouring by gender 
 
 ggplot(df_encoded) + 
-  geom_point(aes(x = V1, y = V2, color = as.factor(df$Gender)))
+  geom_point(aes(x = V1, y = V2, color = as.factor(df$Gender))) +
+  ggtitle("Gender")
 
 ## again, mixed
 

@@ -54,9 +54,9 @@ In the second step, we evaluated the effectiveness of pain reduction and the ove
 (b) For overall outcome result, we needed to specify different criteria for different outcome types:
     (1) When outcome type was LOWER EXTREMITY FUNC SCALE, if the score increased at least 9 points or increased from larger than 71 to 80 (max), then we considered the treatment is effective overall, and we assigned the overall effect with score 1. Otherwise, we gave the overall effect with score 0.
     
-    (2) when outcome type was KNEE OUTCOME SURVEY, if the score increased at least 9 points or increased from larger than 91 to 100 (max), then we considered the treatment is effective overall, and we assigned the overall effect with score 1. Otherwise, we gave the overall effect with score 0.
+  (2) when outcome type was KNEE OUTCOME SURVEY, if the score increased at least 9 points or increased from larger than 91 to 100 (max), then we considered the treatment is effective overall, and we assigned the overall effect with score 1. Otherwise, we gave the overall effect with score 0.
     
-    (3) When outcome belongs to other 3 types, if the score decreased at least 10 points or decreased from less than 10 to 0 (minimum), then we considered the treatment is effective overall, and we assigned the overall effect with score 1. Otherwise, we gave the overall effect with score 0.
+  (3) When outcome belongs to other 3 types, if the score decreased at least 10 points or decreased from less than 10 to 0 (minimum), then we considered the treatment is effective overall, and we assigned the overall effect with score 1. Otherwise, we gave the overall effect with score 0.
 
 ### iii)
 
@@ -65,13 +65,13 @@ For the treatments with identical same ID, body region, classification and treat
     
 
 
-```{r}
+```{r, echo = F}
 dat1 <-  read_excel("~/Desktop/For Masanao Class - ROMS Full Data Set - March 19th, 2019 Upload.xlsx",sheet = 1)
 dat2 <-  read_excel("~/Desktop/For Masanao Class - ROMS Full Data Set - March 19th, 2019 Upload.xlsx",sheet = 2)
 
 ```
 
-```{r}
+```{r, echo = F}
 # delete the weird ID 
 dat2<- dat2 %>% filter(`ROMS ID` != 1000330)
 
@@ -115,7 +115,7 @@ dat2$`Surgery Date` <- as.numeric(as.character(dat2$`Surgery Date`))
 dat2$`Surgery Date` <- janitor::excel_numeric_to_date(dat2$`Surgery Date`, date_system = "modern")
 ```
 
-```{r}
+```{r, echo = F}
 #### fix the inconsistency of beg and final score
 # 1) after grouping, if for one therapy the admission pain score is not consistent, use the first visit pain score.
 dat2 <- dat2 %>%group_by(`ROMS ID`,Outcome,`Body Region`, Classification,`Admission Date`,`Discharge Date`) %>% mutate(`Admission Pain` = ifelse( length(unique(`Admission Pain`))>=2, (first(`Visit Pain Score`) ), `Admission Pain` ))
@@ -136,7 +136,7 @@ dat2 <- dat2 %>%group_by(`ROMS ID`,`Body Region`, Classification,`Admission Date
 
 ```
 
-```{r}
+```{r, echo =F}
 # evaluate the clinical function for the pain level. if the pain in the last decreases at least 2 or from less than 2 to 0, we say it's good therapy, otherwise, bad therapy.
 da_evaluate <- dat2  %>% mutate(pain_effect = ifelse((`Discharge Pain Score`-`Admission Pain`) <= -2 & `Admission Pain` >= 2, "good",ifelse(`Admission Pain` < 2 &`Discharge Pain Score`==0, "good","bad" )))
 
@@ -163,7 +163,7 @@ da_eval  <- da_eval %>% distinct()
 
 ```
 
-```{r}
+```{r, echo = F}
 # we consider some features
 subset <- da_eval[,c(2,5,6,7,8,15,16,17,18,20,21,22,25,26,27,28,29,30,31,32,33,37,38)]
 # 4263 therapy?
@@ -198,7 +198,7 @@ subset.2$painresult <- as.numeric(subset.2$painresult)
 subset.2$result <- as.numeric(subset.2$result)
 ```
 
-```{r}
+```{r, echo = F}
 # for the ID with repeated therapy summaries, check if the cause was outcome type
 check <- subset.2 %>% group_by(`ROMS ID`,`Body Region`,Classification, `Admission Date`,`Discharge Date` )%>% mutate(rep = n_distinct(Outcome))
 # 1) if the only cause is outcome type, we evaluate the therapy on average. 
@@ -215,7 +215,7 @@ check.2 <- check.2[, -c(23,24,25)]
 ```
 
 
-```{r}
+```{r, echo = F}
 # combine the result, 3105 therapy in total
 df_unique <- rbind(subset.1, check.2)
 # combine the result including the repeated summaries of therapy, 3652 therapy in total
@@ -226,7 +226,7 @@ df_unique <- df_unique %>% filter(`ROMS ID` != 2131)
 df_all <-df_all %>% filter(`ROMS ID` != 2131)
 ```
 
-```{r}
+```{r, echo = F}
 length(df_unique$`ROMS ID`)
 length(df_all$`ROMS ID`)
 
@@ -236,7 +236,7 @@ data <- df_unique
 # EDA 
 
 (needs comments)
-```{r}
+```{r, echo = F}
 #da2$duration <- as.Date(da2$`Discharge Date`) - as.Date(da2$`Admission Date`)
 data$`Admission Pain` <- as.factor(data$`Admission Pain`)
 data <- data %>% drop_na(pain_effect)
@@ -250,7 +250,7 @@ ggplot(subset(data, `ROMS ID` != 2537 & 1893), aes(x=duration, color=`Admission 
 
 ```
 
-```{r}
+```{r, echo = F}
 ggplot(data, mapping = aes(x = `Admission Pain`, fill = `Body Region`)) +
     geom_bar(position="stack")+coord_flip() + labs(title = ("Admission Pain and the Distribution of Body Region"))
 ```
